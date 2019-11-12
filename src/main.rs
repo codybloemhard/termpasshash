@@ -22,9 +22,11 @@ fn print_masked<T: std::fmt::Display>(msg: T, col: tbl::UserColour){
 
 fn prompt_until_correct<T: std::str::FromStr>(msg: &str) -> T{
     loop{
+        tbl::discard_newline_on_prompt_nexttime();
         let string = prompt_secure(msg);
         let x: Option<T> = tbl::string_to_value(&string);
         if let Some(xv) = x {
+            tbl::println("");
             return xv;
         }else{
             tbl::println_col(" > could not parse", tbl::UserColour::Red);
