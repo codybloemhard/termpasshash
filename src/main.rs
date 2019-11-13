@@ -2,6 +2,8 @@ use sha3::{Sha3_512, Digest};
 use term_basics_linux as tbl;
 use lapp;
 use std::cmp::{max};
+use hex;
+use base64;
 
 fn main() {
     let args = lapp::parse_args("
@@ -45,16 +47,16 @@ fn main() {
     };
     let mut res = secure_hash(password, salt, rounds);
     res.truncate(mlen);
-    if arg_unmask{
-        tbl::println(res);
-    }else{
-        print_masked(res, tbl::UserColour::Magenta);
-    }
+    print_hash(res, tbl::UserColour::Magenta, !arg_unmask);
 }
 
-fn print_masked<T: std::fmt::Display>(msg: T, col: tbl::UserColour){
+fn print_hash<T: std::fmt::Display>(msg: T, col: tbl::UserColour, mask: bool){
     tbl::use_style(tbl::TextStyle::Std);
-    tbl::println_cols(msg, col.clone(), col);
+    if mask {
+        tbl::println_cols(msg, col.clone(), col);
+    }else{
+        tbl::println_col(msg, col);
+    }
     tbl::restore_style();
 }
 
@@ -102,4 +104,12 @@ fn hash(string: String) -> String{
     hasher.input(string);
     let res = hasher.result();
     format!("{:x}", res)
+}
+
+fn b16_to_b64(string: &str) -> Option<String>{
+    let x = hex::decode(string);
+    match x{
+        Result::Err(_) => Option::None,
+        Result::Ok(xv) => Option::Some(base64::encode(&xv)),
+    }
 }
