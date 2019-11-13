@@ -5,6 +5,33 @@ use std::cmp::{max};
 use hex;
 use base64;
 
+
+//==
+
+#[cfg(test)]
+mod tests{
+    #[test]
+    fn test_hash0(){
+        let x = crate::secure_hash("test".to_string(), "salt".to_string(), 1);
+        assert_eq!(x, "2a247335dd9f59396a61822655998a9ddcd52912017d5f402a6140a8792b18426e90adf165d9e3dad5f954f850273e31739e1032fc970aef62cef036cb3e2143".to_string());
+    }
+    #[test]
+    fn test_hash1(){
+        let x = crate::hash("hello world".to_string());
+        assert_eq!(x, "840006653e9ac9e95117a15c915caab81662918e925de9e004f774ff82d7079a40d4d27b1b372657c61d46d470304c88c788b3a4527ad074d1dccbee5dbaa99a".to_string());
+    }
+    #[test]
+    fn test_base64_0(){
+        let x = crate::b16_to_b64(&"2a247335dd9f59396a61822655998a9ddcd52912017d5f402a6140a8792b18426e90adf165d9e3dad5f954f850273e31739e1032fc970aef62cef036cb3e2143".to_string());
+        assert_eq!(x, Option::Some("KiRzNd2fWTlqYYImVZmKndzVKRIBfV9AKmFAqHkrGEJukK3xZdnj2tX5VPhQJz4xc54QMvyXCu9izvA2yz4hQw==".to_string()));
+    }
+    #[test]
+    fn test_base64_1(){
+        let x = crate::b16_to_b64(&"840006653e9ac9e95117a15c915caab81662918e925de9e004f774ff82d7079a40d4d27b1b372657c61d46d470304c88c788b3a4527ad074d1dccbee5dbaa99a".to_string());
+        assert_eq!(x, Option::Some("hAAGZT6ayelRF6FckVyquBZikY6SXengBPd0/4LXB5pA1NJ7GzcmV8YdRtRwMEyIx4izpFJ60HTR3MvuXbqpmg==".to_string()));
+    }
+}
+
 fn main() {
     let args = lapp::parse_args("
         A program to hash your passwords.
@@ -15,6 +42,7 @@ fn main() {
         -p,--password (default '') //The password to be hashed. If '' you will be prompted for it. Be carefull using this flag: never show the password as plaintext on screen.
         -s,--salt (default '') //The salt to be used. If '' you will be promted for it. Be carefull using this flag if you want your salt to be secret.
         -m,--mask //Mask the user input by substituting the characters with an '*'. Normally nothing is printed at all.
+        -b,--base16 //Use base16(hexadecimal) instead of base64
     ");
     let arg_rounds = args.get_integer("rounds");
     let arg_length = args.get_integer("length");
@@ -22,6 +50,7 @@ fn main() {
     let arg_password = args.get_string("password");
     let arg_salt = args.get_string("salt");
     let arg_mask = args.get_bool("mask");
+    let arg_base16 = args.get_bool("base16");
     tbl::set_style(tbl::TextStyle::Bold);
     tbl::println_col("TermPassHash", tbl::UserColour::Magenta);
     tbl::set_colour(tbl::UserColour::Cyan, tbl::FGBG::FG);
@@ -46,6 +75,14 @@ fn main() {
         arg_length as usize
     };
     let mut res = secure_hash(password, salt, rounds);
+    if !arg_base16 {
+        if let Some(x) = b16_to_b64(&res){
+            res = x;
+        }else{
+            tbl::println_cols_style("TermPassHash: Could not convert B16 to B64!", tbl::UserColour::Red, tbl::UserColour::Std, tbl::TextStyle::Bold);
+            std::process::exit(-1);
+        }
+    }
     res.truncate(mlen);
     print_hash(res, tbl::UserColour::Magenta, !arg_unmask);
 }
@@ -90,7 +127,7 @@ fn prompt_secure(msg: &str, mask: bool, endln: bool) -> String{
     string
 }
 
-fn secure_hash(password: String, mut salt: String, rounds: usize) -> String{
+pub fn secure_hash(password: String, mut salt: String, rounds: usize) -> String{
     salt.push_str(&password);
     let mut h = salt;
     for _ in 0..rounds{
@@ -99,14 +136,14 @@ fn secure_hash(password: String, mut salt: String, rounds: usize) -> String{
     h
 }
 
-fn hash(string: String) -> String{
+pub fn hash(string: String) -> String{
     let mut hasher = Sha3_512::new();
     hasher.input(string);
     let res = hasher.result();
     format!("{:x}", res)
 }
 
-fn b16_to_b64(string: &str) -> Option<String>{
+pub fn b16_to_b64(string: &str) -> Option<String>{
     let x = hex::decode(string);
     match x{
         Result::Err(_) => Option::None,
