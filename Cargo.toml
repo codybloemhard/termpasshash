@@ -8,5 +8,5 @@ edition = "2018"
 
 [dependencies]
 sha3 = "0.8.2"
-term-basics-linux = "0.5.1"
+term-basics-linux = "0.5.2"
 lapp = "0.4.0"
