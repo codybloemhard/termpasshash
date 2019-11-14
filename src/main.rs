@@ -5,9 +5,6 @@ use std::cmp::{max};
 use hex;
 use base64;
 
-
-//==
-
 #[cfg(test)]
 mod tests{
     #[test]
@@ -19,6 +16,11 @@ mod tests{
     fn test_hash1(){
         let x = crate::hash("hello world".to_string());
         assert_eq!(x, "840006653e9ac9e95117a15c915caab81662918e925de9e004f774ff82d7079a40d4d27b1b372657c61d46d470304c88c788b3a4527ad074d1dccbee5dbaa99a".to_string());
+    }
+    #[test]
+    fn test_hash2(){
+        let x = crate::secure_hash("test".to_string(), "salt".to_string(), 12);
+        assert_eq!(x, "bee77f7ef2ce70d1a073b71da9c5ea74013dcfe70f3a5a46db160984958f49614e39788cfc0f84d086686f2c94f4c5fafb14f55959548eaa5dc06f0a42a6435c".to_string());
     }
     #[test]
     fn test_base64_0(){
