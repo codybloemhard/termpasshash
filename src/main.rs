@@ -45,6 +45,7 @@ fn main() {
         -s,--salt (default '') //The salt to be used. If '' you will be promted for it. Be carefull using this flag if you want your salt to be secret.
         -m,--mask //Mask the user input by substituting the characters with an '*'. Normally nothing is printed at all.
         -b,--base16 //Use base16(hexadecimal) instead of base64
+        -c,--create //Create a new hash, you will be asked twice to verify if they match.
     ");
     let arg_rounds = args.get_integer("rounds");
     let arg_length = args.get_integer("length");
@@ -53,40 +54,65 @@ fn main() {
     let arg_salt = args.get_string("salt");
     let arg_mask = args.get_bool("mask");
     let arg_base16 = args.get_bool("base16");
+    let arg_create = args.get_bool("create");
     tbl::set_style(tbl::TextStyle::Bold);
     tbl::println_col("TermPassHash", tbl::UserColour::Magenta);
     tbl::set_colour(tbl::UserColour::Cyan, tbl::FGBG::FG);
-    let password = if arg_password == ""{
-        prompt_secure("Password: ", arg_mask, true)
-    }else{
-        arg_password
-    };
-    let salt = if arg_salt == ""{
-        prompt_secure("Salt: ", arg_mask, true)
-    }else{
-        arg_salt
-    };
-    let rounds: usize = if arg_rounds == 0{
-        prompt_until_correct("Rounds: ", arg_mask)
-    }else{
-        max(1, arg_rounds as usize)
-    };
-    let mlen: usize = if arg_length == 0{
-        prompt_until_correct("Max chars: ", arg_mask)
-    }else{
-        arg_length as usize
-    };
-    let mut res = secure_hash(password, salt, rounds);
-    if !arg_base16 {
-        if let Some(x) = b16_to_b64(&res){
-            res = x;
+    let mut last = String::new();
+    let mut ok = false;
+    let mut mlen;
+    let mut res = loop{
+        let password = if arg_password == ""{
+            prompt_secure("Password: ", arg_mask, true)
         }else{
-            tbl::println_cols_style("TermPassHash: Could not convert B16 to B64!", tbl::UserColour::Red, tbl::UserColour::Std, tbl::TextStyle::Bold);
-            std::process::exit(-1);
+            arg_password.clone()
+        };
+        let salt = if arg_salt == ""{
+            prompt_secure("Salt: ", arg_mask, true)
+        }else{
+            arg_salt.clone()
+        };
+        let rounds: usize = if arg_rounds == 0{
+            prompt_until_correct("Rounds: ", arg_mask)
+        }else{
+            max(1, arg_rounds as usize)
+        };
+        mlen = if arg_length == 0{
+            prompt_until_correct("Max chars: ", arg_mask)
+        }else{
+            arg_length as usize
+        };
+        let mut res = secure_hash(password, salt, rounds);
+        if !arg_base16 {
+            if let Some(x) = b16_to_b64(&res){
+                res = x;
+            }else{
+                fatal_error("TermPassHash: Could not convert B16 to B64!")
+            }
         }
+        if !arg_create{
+            ok = true;
+            break res;
+        }else if arg_create && last == ""{
+            last = res;
+            tbl::println_col("Verify:", tbl::UserColour::Magenta);
+        }else if arg_create && last != "" && last == res{
+            ok = true;
+            break res;
+        }else if arg_create && last != "" && last != res{
+            break String::new();
+        }
+    };
+    if !ok{
+        fatal_error("TermPassHash: Results did not match!");
     }
     res.truncate(mlen);
     print_hash(res, tbl::UserColour::Magenta, !arg_unmask);
+}
+
+fn fatal_error(msg: &str){
+    tbl::println_cols_style(msg, tbl::UserColour::Red, tbl::UserColour::Green, tbl::TextStyle::Bold);
+    std::process::exit(-1);
 }
 
 fn print_hash<T: std::fmt::Display>(msg: T, col: tbl::UserColour, mask: bool){
