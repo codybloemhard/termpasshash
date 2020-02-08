@@ -111,7 +111,7 @@ fn main() {
 }
 
 fn fatal_error(msg: &str){
-    tbl::println_cols_style(msg, tbl::UserColour::Red, tbl::UserColour::Green, tbl::TextStyle::Bold);
+    tbl::println_cols_style(msg, tbl::UserColour::Red, tbl::UserColour::Std, tbl::TextStyle::Bold);
     std::process::exit(-1);
 }
 
