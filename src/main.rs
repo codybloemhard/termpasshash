@@ -4,6 +4,7 @@ use lapp;
 use std::cmp::{max};
 use hex;
 use base64;
+use cli_clipboard::{ClipboardContext, ClipboardProvider};
 
 #[cfg(test)]
 mod tests{
@@ -46,6 +47,7 @@ fn main() {
         -m,--mask //Mask the user input by substituting the characters with an '*'. Normally nothing is printed at all.
         -b,--base16 //Use base16(hexadecimal) instead of base64
         -c,--create //Create a new hash, you will be asked twice to verify if they match.
+        -P,--print //Print password masked or unmasked instead of copy to clipboard.
     ");
     let arg_rounds = args.get_integer("rounds");
     let arg_length = args.get_integer("length");
@@ -55,6 +57,7 @@ fn main() {
     let arg_mask = args.get_bool("mask");
     let arg_base16 = args.get_bool("base16");
     let arg_create = args.get_bool("create");
+    let arg_print = args.get_bool("print");
     tbl::set_style(tbl::TextStyle::Bold);
     tbl::println_col("TermPassHash", tbl::UserColour::Magenta);
     tbl::set_colour(tbl::UserColour::Cyan, tbl::FGBG::FG);
@@ -107,7 +110,18 @@ fn main() {
         fatal_error("TermPassHash: Results did not match!");
     }
     res.truncate(mlen);
-    print_hash(res, tbl::UserColour::Magenta, !arg_unmask);
+    if arg_print{
+        print_hash(&res, tbl::UserColour::Magenta, !arg_unmask);
+    }else{
+        let mut ctx = ClipboardContext::new().unwrap();
+        ctx.set_contents(res).unwrap();
+        tbl::use_style(tbl::TextStyle::Bold);
+        tbl::set_colours(tbl::UserColour::Cyan, tbl::UserColour::Std);
+        tbl::println("Hash copied into clipboard!");
+        tbl::getch();
+        ctx.clear();
+        tbl::println("Hash removed from clipboard!");
+    }
 }
 
 fn fatal_error(msg: &str){
@@ -115,7 +129,7 @@ fn fatal_error(msg: &str){
     std::process::exit(-1);
 }
 
-fn print_hash<T: std::fmt::Display>(msg: T, col: tbl::UserColour, mask: bool){
+fn print_hash<T: std::fmt::Display>(msg: &T, col: tbl::UserColour, mask: bool){
     tbl::use_style(tbl::TextStyle::Std);
     if mask {
         tbl::println_cols(msg, col.clone(), col);
