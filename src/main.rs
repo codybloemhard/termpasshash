@@ -1,9 +1,6 @@
 use sha3::{Sha3_512, Digest};
 use term_basics_linux as tbl;
-use lapp;
 use std::cmp::{max};
-use hex;
-use base64;
 use cli_clipboard::{ClipboardContext, ClipboardProvider};
 
 #[cfg(test)]
@@ -119,7 +116,7 @@ fn main() {
         tbl::set_colours(tbl::UserColour::Cyan, tbl::UserColour::Std);
         tbl::println("Hash copied into clipboard!");
         tbl::getch();
-        ctx.clear();
+        let _ = ctx.clear();
         tbl::println("Hash removed from clipboard!");
     }
 }

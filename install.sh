@@ -1,3 +1,4 @@
+#!/bin/bash
 sudo mkdir -p /usr/local/bin
 cargo build --release
 sudo cp -f target/release/termpasshash /usr/local/bin
