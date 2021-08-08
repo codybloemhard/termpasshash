@@ -62,12 +62,12 @@ fn main() {
     let mut ok = false;
     let mut mlen;
     let mut res = loop{
-        let password = if arg_password == ""{
+        let password = if arg_password.is_empty(){
             prompt_secure("Password: ", arg_mask, true)
         }else{
             arg_password.clone()
         };
-        let salt = if arg_salt == ""{
+        let salt = if arg_salt.is_empty(){
             prompt_secure("Salt: ", arg_mask, true)
         }else{
             arg_salt.clone()
@@ -93,13 +93,13 @@ fn main() {
         if !arg_create{
             ok = true;
             break res;
-        }else if arg_create && last == ""{
+        }else if arg_create && last.is_empty(){
             last = res;
             tbl::println_col("Verify:", tbl::UserColour::Magenta);
-        }else if arg_create && last != "" && last == res{
+        }else if arg_create && !last.is_empty() && last == res{
             ok = true;
             break res;
-        }else if arg_create && last != "" && last != res{
+        }else if arg_create && !last.is_empty() && last != res{
             break String::new();
         }
     };
