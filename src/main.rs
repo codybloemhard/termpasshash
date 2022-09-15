@@ -56,8 +56,8 @@ fn main() {
     let arg_create = args.get_bool("create");
     let arg_print = args.get_bool("print");
     tbl::set_style(tbl::TextStyle::Bold);
-    tbl::println_col("TermPassHash", tbl::UserColour::Magenta);
-    tbl::set_colour(tbl::UserColour::Cyan, tbl::FGBG::FG);
+    tbl::println_col("TermPassHash", tbl::UC::Magenta);
+    tbl::set_colour(tbl::UC::Cyan, tbl::XG::FG);
     let mut last = String::new();
     let mut ok = false;
     let mut mlen;
@@ -95,7 +95,7 @@ fn main() {
             break res;
         }else if arg_create && last.is_empty(){
             last = res;
-            tbl::println_col("Verify:", tbl::UserColour::Magenta);
+            tbl::println_col("Verify:", tbl::UC::Magenta);
         }else if arg_create && !last.is_empty() && last == res{
             ok = true;
             break res;
@@ -108,12 +108,12 @@ fn main() {
     }
     res.truncate(mlen);
     if arg_print{
-        print_hash(&res, tbl::UserColour::Magenta, !arg_unmask);
+        print_hash(&res, tbl::UC::Magenta, !arg_unmask);
     }else{
         let mut ctx = ClipboardContext::new().unwrap();
         ctx.set_contents(res).unwrap();
         tbl::use_style(tbl::TextStyle::Bold);
-        tbl::set_colours(tbl::UserColour::Cyan, tbl::UserColour::Std);
+        tbl::set_colours(tbl::UC::Cyan, tbl::UC::Std);
         tbl::println("Hash copied into clipboard!");
         tbl::getch();
         let _ = ctx.clear();
@@ -122,14 +122,14 @@ fn main() {
 }
 
 fn fatal_error(msg: &str){
-    tbl::println_cols_style(msg, tbl::UserColour::Red, tbl::UserColour::Std, tbl::TextStyle::Bold);
+    tbl::println_cols_style(msg, tbl::UC::Red, tbl::UC::Std, tbl::TextStyle::Bold);
     std::process::exit(-1);
 }
 
-fn print_hash<T: std::fmt::Display>(msg: &T, col: tbl::UserColour, mask: bool){
+fn print_hash<T: std::fmt::Display>(msg: &T, col: tbl::UC, mask: bool){
     tbl::use_style(tbl::TextStyle::Std);
     if mask {
-        tbl::println_cols(msg, col.clone(), col);
+        tbl::println_cols(msg, col, col);
     }else{
         tbl::println_col(msg, col);
     }
@@ -142,17 +142,17 @@ fn prompt_until_correct<T: std::str::FromStr>(msg: &str, mask: bool) -> T{
         let string = prompt_secure(msg, mask, false);
         let x: Option<T> = tbl::string_to_value(&string);
         if let Some(xv) = x {
-            tbl::println_col(" > parsed", tbl::UserColour::Green);
+            tbl::println_col(" > parsed", tbl::UC::Green);
             return xv;
         }else{
-            tbl::println_col(" > could not parse", tbl::UserColour::Red);
+            tbl::println_col(" > could not parse", tbl::UC::Red);
         }
     }
 }
 
 fn prompt_secure(msg: &str, mask: bool, endln: bool) -> String{
     tbl::print(msg);
-    tbl::use_colour(tbl::UserColour::Yellow, tbl::FGBG::FG);
+    tbl::use_colour(tbl::UC::Yellow, tbl::XG::FG);
     let string;
     tbl::discard_newline_on_prompt_nexttime();
     if mask{
@@ -160,9 +160,9 @@ fn prompt_secure(msg: &str, mask: bool, endln: bool) -> String{
         if endln { tbl::println(""); }
     }else{
         string = tbl::input_field_custom(&mut tbl::InputHistory::new(0), tbl::PromptChar::None);
-        if endln { tbl::println_col(" > parsed", tbl::UserColour::Green); }
+        if endln { tbl::println_col(" > parsed", tbl::UC::Green); }
     };
-    tbl::restore_colour(tbl::FGBG::FG);
+    tbl::restore_colour(tbl::XG::FG);
     string
 }
 
