@@ -4,6 +4,7 @@ use sha3::{ Sha3_512, Digest };
 
 use cli_clipboard::{ ClipboardContext, ClipboardProvider };
 use term_basics_linux as tbl;
+use zen_colour::*;
 
 fn main() {
     let args = lapp::parse_args("
@@ -20,117 +21,95 @@ fn main() {
     let arg_create = args.get_bool("create");
     let arg_print = args.get_bool("print");
 
-    tbl::set_style(tbl::TextStyle::Bold);
-    tbl::println_col("TermPassHash", tbl::UC::Magenta);
-    tbl::set_colour(tbl::UC::Cyan, tbl::XG::FG);
+    println!("{BOLD}{CYAN}TermPassHash{RESET}");
 
     if arg_legacy {
-        println!("WARNING: running in legacy SHA3-512 iterated mode!");
+        println!("{BOLD}{RED}WARNING{WHITE}: running in legacy {BOLD}{MAGENTA}SHA3-512 \
+            iterated{WHITE} mode!{RESET}");
     }
 
-    let mut last = String::new();
-    let mut ok = false;
-    let mut mlen;
-    let mut res = loop {
-        let password = prompt_secure("Password: ", false, true);
-        let salt = prompt_secure("Salt: ", false, true);
-        let res = if arg_legacy {
-            let rounds: usize = prompt_until_correct("Rounds: ", false);
-            mlen = prompt_until_correct("Max chars: ", false);
-            let b16 = secure_hash_sha(password, salt, rounds);
-            if let Some(res) = b16_to_b64(&b16) {
-                res
-            } else {
-                panic!("TermPassHash: Could not convert B16 to B64!")
-            }
-        } else {
-            mlen = prompt_until_correct("Max chars: ", false);
-            let params = Params::new(1 << 21, 1, 1, Some(1024))
-                .expect("Termpasshash: could not construct Argon2 parameters.");
-            let argon = Argon2::new(Algorithm::Argon2id, Version::default(), params);
-            let mut outp = [0u8; 1024];
-            argon.hash_password_into(password.as_bytes(), salt.as_bytes(), &mut outp)
-                .expect("Termpasshash: could not complete Argon2 hash.");
-            general_purpose::STANDARD.encode(&outp[..mlen])
-        };
-        if !arg_create {
-            ok = true;
-            break res;
-        } else if arg_create && last.is_empty() {
-            last = res;
-            tbl::println_col("Verify:", tbl::UC::Magenta);
-        } else if arg_create && !last.is_empty() && last == res {
-            ok = true;
-            break res;
-        } else if arg_create && !last.is_empty() && last != res {
-            break String::new();
+    let res = if arg_create {
+        let h0 = hash(arg_legacy);
+        println!("{BOLD}{MAGENTA}Verify:{RESET}");
+        let h1 = hash(arg_legacy);
+        if h0 != h1 {
+            print!("{BOLD}{RED}TermPassHash: Results did not match!{RESET}");
+            std::process::exit(-1);
         }
+        h0
+    } else {
+        hash(arg_legacy)
     };
 
-    if !ok {
-        fatal_error("TermPassHash: Results did not match!");
-    }
-    res.truncate(mlen);
     if arg_print {
-        print_hash(&res, tbl::UC::Magenta, !arg_unmask);
+        if arg_unmask {
+            println!("{res}");
+        } else {
+            println!("{GREEN}{BG_GREEN}{res}{RESET}");
+        }
     } else {
         let mut ctx = ClipboardContext::new().unwrap();
         ctx.set_contents(res).unwrap();
-        tbl::use_style(tbl::TextStyle::Bold);
-        tbl::set_colours(tbl::UC::Cyan, tbl::UC::Std);
-        tbl::println("Hash copied into clipboard!");
+        println!("{BOLD}Hash {GREEN}copied{WHITE} into clipboard!{RESET}");
         tbl::getch();
         let _ = ctx.clear();
-        tbl::println("Hash removed from clipboard!");
+        println!("{BOLD}Hash {RED}removed{WHITE} from clipboard!");
     }
 }
 
-fn fatal_error(msg: &str) {
-    tbl::println_cols_style(msg, tbl::UC::Red, tbl::UC::Std, tbl::TextStyle::Bold);
-    std::process::exit(-1);
-}
-
-fn print_hash<T: std::fmt::Display>(msg: &T, col: tbl::UC, mask: bool) {
-    tbl::use_style(tbl::TextStyle::Std);
-    if mask {
-        tbl::println_cols(msg, col, col);
-    } else {
-        tbl::println_col(msg, col);
-    }
-    tbl::restore_style();
-}
-
-fn prompt_until_correct<T: std::str::FromStr>(msg: &str, mask: bool) -> T {
-    loop {
-        tbl::discard_newline_on_prompt_nexttime();
-        let string = prompt_secure(msg, mask, false);
-        let x: Option<T> = tbl::string_to_value(&string);
-        if let Some(xv) = x {
-            tbl::println_col(" > parsed", tbl::UC::Green);
-            return xv;
+fn hash(use_legacy: bool) -> String {
+    if use_legacy {
+        let password = prompt_min_length("Password: ", 0);
+        let salt = prompt_min_length("Salt: ", 0);
+        let rounds: usize = prompt_until_correct("Rounds: ");
+        let mlen = prompt_until_correct("Max chars: ");
+        let b16 = secure_hash_sha(password, salt, rounds);
+        if let Some(mut res) = b16_to_b64(&b16) {
+            res.truncate(mlen);
+            res
         } else {
-            tbl::println_col(" > could not parse", tbl::UC::Red);
+            panic!("{BOLD}{RED}TermPassHash: Could not convert B16 to B64!{RESET}")
         }
+    } else {
+        let password = prompt_min_length("Password: ", 8);
+        let salt = prompt_min_length("Salt: ", 8);
+        let mlen = prompt_until_correct("Max chars: ");
+        let params = Params::new(1 << 21, 1, 1, Some(1024))
+            .expect("{BOLD}{RED}Termpasshash: could not construct Argon2 parameters.{RESET}");
+        let argon = Argon2::new(Algorithm::Argon2id, Version::default(), params);
+        let mut outp = [0u8; 1024];
+        argon.hash_password_into(password.as_bytes(), salt.as_bytes(), &mut outp)
+            .expect("{BOLD}{RED}Termpasshash: could not complete Argon2 hash.{RESET}");
+        general_purpose::STANDARD.encode(&outp[..mlen])
     }
 }
 
-fn prompt_secure(msg: &str, mask: bool, endln: bool) -> String {
-    tbl::print(msg);
-    tbl::use_colour(tbl::UC::Yellow, tbl::XG::FG);
-    let string;
+fn prompt_until_correct<T: std::str::FromStr>(msg: &str) -> T {
+    loop {
+        if let Some(xv) = tbl::string_to_value(&prompt_secure(msg)) {
+            println!("{BOLD}{GREEN} > parsed{RESET}");
+            break xv;
+        }
+        println!("{BOLD}{RED} > could not parse{RESET}");
+    }
+}
+
+fn prompt_min_length(msg: &str, min: usize) -> String {
+    loop {
+        let string = prompt_secure(msg);
+        let l = string.chars().count();
+        if l >= min {
+            println!("{BOLD}{GREEN} > valid{RESET}");
+            break string;
+        }
+        println!("{BOLD}{RED} > too short: {WHITE}{l} {RED}< {WHITE}{min}{RESET}");
+    }
+}
+
+fn prompt_secure(msg: &str) -> String {
+    print!("{BOLD}{WHITE}{msg}{RESET}");
     tbl::discard_newline_on_prompt_nexttime();
-    if mask {
-        string = tbl::input_field_custom(
-            &mut tbl::InputHistory::new(0),
-            tbl::PromptChar::Substitude('*')
-        );
-        if endln { tbl::println(""); }
-    } else {
-        string = tbl::input_field_custom(&mut tbl::InputHistory::new(0), tbl::PromptChar::None);
-        if endln { tbl::println_col(" > parsed", tbl::UC::Green); }
-    };
-    tbl::restore_colour(tbl::XG::FG);
-    string
+    tbl::input_field_custom(&mut tbl::InputHistory::new(0), tbl::PromptChar::None)
 }
 
 pub fn secure_hash_sha(password: String, mut salt: String, rounds: usize) -> String {
