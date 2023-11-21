@@ -1,19 +1,22 @@
-use sha3::{ Sha3_512, Digest };
-use term_basics_linux as tbl;
-use cli_clipboard::{ ClipboardContext, ClipboardProvider };
+use argon2::{ Argon2, Algorithm, Version, Params };
 use base64::{ Engine, engine::general_purpose };
+use sha3::{ Sha3_512, Digest };
+
+use cli_clipboard::{ ClipboardContext, ClipboardProvider };
+use term_basics_linux as tbl;
 
 fn main() {
     let args = lapp::parse_args("
         A program to hash your passwords.
         You can use the hash it self as a password for websites, etc.
+        -l,--legacy //Use SHA3-512 iterated as hashing procedure.
         -u,--unmask //Show the resulting hash in readable colours, instead of the masked version.
-        -b,--base16 //Use base16(hexadecimal) instead of base64
         -c,--create //Create a new hash, you will be asked twice to verify if they match.
-        -P,--print //Print password masked or unmasked instead of copy to clipboard.
+        -p,--print //Print password masked or unmasked instead of copy to clipboard.
     ");
+
+    let arg_legacy = args.get_bool("legacy");
     let arg_unmask = args.get_bool("unmask");
-    let arg_base16 = args.get_bool("base16");
     let arg_create = args.get_bool("create");
     let arg_print = args.get_bool("print");
 
@@ -21,22 +24,35 @@ fn main() {
     tbl::println_col("TermPassHash", tbl::UC::Magenta);
     tbl::set_colour(tbl::UC::Cyan, tbl::XG::FG);
 
+    if arg_legacy {
+        println!("WARNING: running in legacy SHA3-512 iterated mode!");
+    }
+
     let mut last = String::new();
     let mut ok = false;
     let mut mlen;
     let mut res = loop {
         let password = prompt_secure("Password: ", false, true);
         let salt = prompt_secure("Salt: ", false, true);
-        let rounds: usize = prompt_until_correct("Rounds: ", false);
-        mlen = prompt_until_correct("Max chars: ", false);
-        let mut res = secure_hash_sha(password, salt, rounds);
-        if !arg_base16 {
-            if let Some(x) = b16_to_b64(&res) {
-                res = x;
+        let res = if arg_legacy {
+            let rounds: usize = prompt_until_correct("Rounds: ", false);
+            mlen = prompt_until_correct("Max chars: ", false);
+            let b16 = secure_hash_sha(password, salt, rounds);
+            if let Some(res) = b16_to_b64(&b16) {
+                res
             } else {
-                fatal_error("TermPassHash: Could not convert B16 to B64!")
+                panic!("TermPassHash: Could not convert B16 to B64!")
             }
-        }
+        } else {
+            mlen = prompt_until_correct("Max chars: ", false);
+            let params = Params::new(1 << 21, 1, 1, Some(1024))
+                .expect("Termpasshash: could not construct Argon2 parameters.");
+            let argon = Argon2::new(Algorithm::Argon2id, Version::default(), params);
+            let mut outp = [0u8; 1024];
+            argon.hash_password_into(password.as_bytes(), salt.as_bytes(), &mut outp)
+                .expect("Termpasshash: could not complete Argon2 hash.");
+            general_purpose::STANDARD.encode(&outp[..mlen])
+        };
         if !arg_create {
             ok = true;
             break res;
@@ -143,7 +159,6 @@ pub fn b16_to_b64(string: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests{
-
     use crate::*;
 
     #[test]
