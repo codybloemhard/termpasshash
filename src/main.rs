@@ -24,8 +24,8 @@ fn main() {
     println!("{BOLD}{CYAN}TermPassHash{RESET}");
 
     if arg_legacy {
-        println!("{BOLD}{RED}WARNING{WHITE}: running in legacy {BOLD}{MAGENTA}SHA3-512 \
-            iterated{WHITE} mode!{RESET}");
+        println!("{BOLD}{RED}WARNING{DEFAULT}: running in legacy {BOLD}{MAGENTA}SHA3-512 \
+            iterated{DEFAULT} mode!{RESET}");
     }
 
     let res = if arg_create {
@@ -50,10 +50,10 @@ fn main() {
     } else {
         let mut ctx = ClipboardContext::new().unwrap();
         ctx.set_contents(res).unwrap();
-        println!("{BOLD}Hash {GREEN}copied{WHITE} into clipboard!{RESET}");
+        println!("{BOLD}Hash {GREEN}copied{DEFAULT} into clipboard!{RESET}");
         tbl::getch();
         let _ = ctx.clear();
-        println!("{BOLD}Hash {RED}removed{WHITE} from clipboard!");
+        println!("{BOLD}Hash {RED}removed{DEFAULT} from clipboard!");
     }
 }
 
@@ -102,12 +102,12 @@ fn prompt_min_length(msg: &str, min: usize) -> String {
             println!("{BOLD}{GREEN} > valid{RESET}");
             break string;
         }
-        println!("{BOLD}{RED} > too short: {WHITE}{l} {RED}< {WHITE}{min}{RESET}");
+        println!("{BOLD}{RED} > too short: {DEFAULT}{l} {RED}< {DEFAULT}{min}{RESET}");
     }
 }
 
 fn prompt_secure(msg: &str) -> String {
-    print!("{BOLD}{WHITE}{msg}{RESET}");
+    print!("{BOLD}{DEFAULT}{msg}{RESET}");
     tbl::discard_newline_on_prompt_nexttime();
     tbl::input_field_custom(&mut tbl::InputHistory::new(0), tbl::PromptChar::None)
 }

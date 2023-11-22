@@ -14,4 +14,4 @@ hex = "0.4.3"
 base64 = "0.21.5"
 cli-clipboard = "0.4.0"
 argon2 = { version = "0.5.2", features = ["std", "zeroize"] }
-zen-colour = "1.0.1"
+zen-colour = "1.1.1"
