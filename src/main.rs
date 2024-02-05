@@ -80,7 +80,9 @@ fn hash(use_legacy: bool) -> String {
         let mut outp = [0u8; 1024];
         argon.hash_password_into(password.as_bytes(), salt.as_bytes(), &mut outp)
             .expect("{BOLD}{RED}Termpasshash: could not complete Argon2 hash.{RESET}");
-        general_purpose::STANDARD.encode(&outp[..mlen])
+        let mut res = general_purpose::STANDARD.encode(&outp[..mlen]);
+        res.truncate(mlen);
+        res
     }
 }
 
